@@ -1,0 +1,10 @@
+node_modules
+.next
+dist
+out
+*.log
+prisma/dev.db
+prisma/dev.db-journal
+.env
+organizer/notes-private
+.private

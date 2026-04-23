@@ -1,0 +1,127 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  displayName  String
+  passwordHash String
+  role         String    @default("user")
+  createdAt    DateTime  @default(now())
+  sessions     Session[]
+  drafts       Draft[]   @relation("UserDrafts")
+  audits       AuditLog[]
+  previews     PreviewSession[]
+  clearances   PublishClearance[]
+  restores     RestoreHistory[]
+}
+
+model Session {
+  id         String   @id @default(cuid())
+  tokenHash  String   @unique
+  userId     String
+  createdAt  DateTime @default(now())
+  expiresAt  DateTime
+  revokedAt  DateTime?
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Draft {
+  id           String   @id @default(cuid())
+  ownerId      String
+  title        String
+  body         String
+  status       String   @default("draft")
+  visibility   String   @default("private")
+  templateId   String?
+  restoreSeed  Int      @default(0)
+  previewNonce String   @default("")
+  updatedAt    DateTime @updatedAt
+  createdAt    DateTime @default(now())
+  owner        User     @relation("UserDrafts", fields: [ownerId], references: [id], onDelete: Cascade)
+  template     Template? @relation(fields: [templateId], references: [id], onDelete: SetNull)
+  previews     PreviewSession[]
+  restores     RestoreHistory[]
+  audits      AuditLog[]
+  clearances  PublishClearance[]
+}
+
+model Template {
+  id           String   @id @default(cuid())
+  slug         String   @unique
+  name         String
+  body         String
+  approved     Boolean  @default(false)
+  shared       Boolean  @default(false)
+  minimumRole  String   @default("user")
+  clueText     String
+  createdAt    DateTime @default(now())
+  drafts       Draft[]
+  restores     RestoreHistory[]
+}
+
+model PreviewSession {
+  id           String    @id @default(cuid())
+  tokenHash    String    @unique
+  draftId      String
+  userId       String
+  snapshotJson String
+  snapshotHash String
+  previewKind  String    @default("normal")
+  createdAt    DateTime  @default(now())
+  expiresAt    DateTime
+  consumedAt   DateTime?
+  draft        Draft     @relation(fields: [draftId], references: [id], onDelete: Cascade)
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model RestoreHistory {
+  id              String   @id @default(cuid())
+  draftId         String
+  templateId      String
+  userId          String
+  preHash         String
+  postHash        String
+  sharedApproved  Boolean  @default(false)
+  createdAt       DateTime @default(now())
+  linkedPreviewId String?
+  draft           Draft    @relation(fields: [draftId], references: [id], onDelete: Cascade)
+  template        Template @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  userId     String?
+  draftId    String?
+  action     String
+  detail     String
+  createdAt  DateTime @default(now())
+  user       User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  draft      Draft?   @relation(fields: [draftId], references: [id], onDelete: SetNull)
+
+  @@index([action, createdAt])
+}
+
+model PublishClearance {
+  id             String   @id @default(cuid())
+  tokenHash      String   @unique
+  scope          String
+  draftId        String
+  userId         String
+  previewId      String?
+  restoreId      String?
+  reason         String
+  createdAt      DateTime @default(now())
+  expiresAt      DateTime
+  consumedAt     DateTime?
+  revokedAt      DateTime?
+  draft          Draft    @relation(fields: [draftId], references: [id], onDelete: Cascade)
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}

@@ -1,0 +1,9 @@
+node_modules
+.next
+dist
+out
+*.log
+.env
+organizer
+.private
+prisma/dev.db
